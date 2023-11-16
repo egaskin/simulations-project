@@ -152,7 +152,7 @@ def get_point_nearest_center(all_pts,tumor_center):
 def create_initial_states(number_pts, num_dim, tumor_center, tri):
   """
   DESCRIPTION: create the array describing the state for each initial point. the
-  ith index in the tri.points attribute is defined by the state at the ith 
+  ith element/point in the tri.points array is defined by the state at the ith 
   element in the cell_states_array. see note below on states
 
   NOTE, STATES ARE DEFINED AS FOLLOWS:

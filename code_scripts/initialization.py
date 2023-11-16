@@ -1,5 +1,6 @@
 import numpy as np
 import random
+from itertools import combinations # https://docs.python.org/3/library/itertools.html#itertools.combinations
 
 def perform_rsa(boundaries, num_dim, number_pts, min_dist_func = None,
                 dist_func = np.linalg.norm):
@@ -95,3 +96,96 @@ def min_dist_2D(pt, center):
 
 def min_dist_3D(pt, center):
   return 0.146 * np.linalg.norm(pt - center) ** (2/3)
+
+
+def create_all_pairs_from_simplex(simplex):
+  # if we let length of simplex = s, then to get all pairs we have
+  # sC2 which is read as "s choose 2" in combinatorics
+  return combinations(simplex,2)
+
+def create_adjacency_matrix_from_simplices(simplices,number_pts):
+  """
+  Input: 
+  - simplices (np.ndarray): contains all the points defining the vertices of the 
+  triangulation which in turn defines nearest neighbors (output from 
+  Delaunay(set of points))
+  - number_pts (int): number of points in the consideration
+
+  Output: 
+  - adjacency matrix (np.ndarray): dimensions (number_pts x number_pts),
+  with a 1 at (row_idx, col_idx) and (col_idx,row_idx) then the point 
+  represented by row_idx and the point represented by col_idx are neighbors in
+  the Delunay Triagnulation
+  """
+  # initialize adjacency matrix (avoid doing empty this time,
+  # since if they are NOT neighbors, then we want zeros)
+  adjacency_mtx = np.zeros(shape=(number_pts,number_pts))
+
+  # range over all the simplices
+  for simplex in simplices:
+
+      # look at each neighbor pair within the simplex
+      for neighbor_pair in create_all_pairs_from_simplex(simplex):
+        point_1_idx = neighbor_pair[0]
+        point_2_idx = neighbor_pair[1]
+
+        # assign 1 to the entry corresponding to point_1 and point_2
+        adjacency_mtx[point_1_idx,point_2_idx] = 1
+        # with our defintion of "neighbors"
+        # the adjacency matrix is symmetrical. if point_1 is neighbor of point_2
+        # then that means point_2 is a neighbor of point_1 (note for kNN this 
+        # may not be true in general, so neighbors must be defined carefully)
+        adjacency_mtx[point_2_idx,point_1_idx] = 1
+
+  return adjacency_mtx
+
+def get_point_nearest_center(all_pts,tumor_center):
+  min_dist_from_center = np.inf
+  best_idx = None
+  for idx, pt in enumerate(all_pts):
+    # calculate distance between point and center
+    if np.linalg.norm(pt - tumor_center) < min_dist_from_center:
+      best_idx = idx
+
+  return best_idx
+
+def create_initial_states(number_pts, num_dim, tumor_center,
+                          adjacency_mtx, tri,
+                          num_progenitor_cells = 1
+                         ):
+  """
+  DESCRIPTION: create the array describing the state for each initial point. the
+  ith index in the tri.points attribute is defined by the state at the ith 
+  element in the cell_states_array. see note below on states
+
+  NOTE, STATES ARE DEFINED AS FOLLOWS:
+  - 0: empty cellular automaton cell (non-tumorous biological cells)
+  - 1: cancerous, proliferative cellular automaton cell
+  - 2: cancerous, non-proliferative, non-necrotic cellular automaton cell
+  - 3: cancerous, necrotic cellular automaton cell
+
+  INPUT: 
+  - number_pts
+  - num_dim
+  - tumor_center (array): the center of the tumor
+  - num_progenitor_cells (int): number of initial cancel cells to start with
+
+  OUTPUT: 
+  - cell_states_array (ndarray): size (1 x number_pts), where the ith entry 
+  corresponds to the ith point's state
+  """
+
+  cell_states_array = np.zeros(shape=(number_pts))
+
+  all_pts = tri.points
+
+  # assign the first progenitor cell
+  pt_idx_nearest_to_center = get_point_nearest_center(all_pts,tumor_center)
+
+  cell_states_array[pt_idx_nearest_to_center] = 1
+
+  # # if more than 1 progenitor cancer cell, assign neighbors of progenitor
+  # #  (and maybe neighbors of neighbors) to be cancer as well
+  # for i in range(1,num_progenitor_cells):
+
+  #   all_neighbors = 

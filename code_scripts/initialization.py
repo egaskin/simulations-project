@@ -149,10 +149,7 @@ def get_point_nearest_center(all_pts,tumor_center):
 
   return best_idx
 
-def create_initial_states(number_pts, num_dim, tumor_center,
-                          adjacency_mtx, tri,
-                          num_progenitor_cells = 1
-                         ):
+def create_initial_states(number_pts, num_dim, tumor_center, tri):
   """
   DESCRIPTION: create the array describing the state for each initial point. the
   ith index in the tri.points attribute is defined by the state at the ith 
@@ -165,10 +162,9 @@ def create_initial_states(number_pts, num_dim, tumor_center,
   - 3: cancerous, necrotic cellular automaton cell
 
   INPUT: 
-  - number_pts
-  - num_dim
-  - tumor_center (array): the center of the tumor
-  - num_progenitor_cells (int): number of initial cancel cells to start with
+  - number_pts (int): number of cellular automaton cells
+  - num_dim (array): number of dimensions for the cells. i.e. 2d or 3d
+  - tumor_center (array): point indicating the center of the tumor
 
   OUTPUT: 
   - cell_states_array (ndarray): size (1 x number_pts), where the ith entry 
@@ -184,8 +180,4 @@ def create_initial_states(number_pts, num_dim, tumor_center,
 
   cell_states_array[pt_idx_nearest_to_center] = 1
 
-  # # if more than 1 progenitor cancer cell, assign neighbors of progenitor
-  # #  (and maybe neighbors of neighbors) to be cancer as well
-  # for i in range(1,num_progenitor_cells):
-
-  #   all_neighbors = 
+  return cell_states_array

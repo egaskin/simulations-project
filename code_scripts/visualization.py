@@ -3,12 +3,13 @@ from scipy.spatial import Delaunay
 from scipy.spatial import Voronoi, voronoi_plot_2d
 
 
-def plot_current_timestep(states_to_labels_dict,cur_timestep_states, all_rsa_points):
+def plot_current_timestep(cur_timestep_states, all_rsa_points):
   cell_labels = [states_to_labels_dict[state_val] for state_val in cur_timestep_states]
   fig, ax = plt.subplots(1,figsize=(8, 4))
   x_vals = all_rsa_points[:,0]
   y_vals = all_rsa_points[:,1]
 
+  states_to_labels_dict = {0:"non-tumorous", 1:"proliferative", 2:"non-proliferative", 3:"necrotic-core"}
   color_map = {"necrotic-core": "dimgray", "proliferative": "lightcoral", "non-proliferative": "firebrick", "non-tumorous": "cornflowerblue"}
   vor = Voronoi(all_rsa_points)
   v_fig = voronoi_plot_2d(vor, show_vertices = False, ax = ax, show_points = False, line_colors = 'steelblue')

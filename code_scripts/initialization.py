@@ -42,11 +42,11 @@ def perform_rsa(boundaries, num_dim, number_pts, min_dist_func = None,
   # second column is y coordinate of ith point/row
   # third column ...
   all_rsa_pts = np.empty(shape=(number_pts,num_dim))
-  center = np.empty(shape=(num_dim))
+  RSA_center = np.empty(shape=(num_dim))
   # for the first point/row, assign valid random values based on boundaries
   for i in range(0, num_dim):
     all_rsa_pts[0,i] = random.uniform(boundaries[i][0],boundaries[i][1])
-    center[i] = (boundaries[i][0] + boundaries[i][1]) / 2
+    RSA_center[i] = (boundaries[i][0] + boundaries[i][1]) / 2
 
   # the last valid point created is the first one, initialized above.
   # while the next point created is not valid, continue to recreate it, once
@@ -78,7 +78,7 @@ def perform_rsa(boundaries, num_dim, number_pts, min_dist_func = None,
       # slice out the other point
       other_pt = all_rsa_pts[other_pt_idx,:]
 
-      if dist_func(other_pt - cur_rand_pt) < min_dist_func(cur_rand_pt,center):
+      if dist_func(other_pt - cur_rand_pt) < min_dist_func(cur_rand_pt,RSA_center):
           # stop early, if one point is too close, then this cur_rand_pt is not
           # acceptable
           acceptable_dist = False
@@ -89,8 +89,13 @@ def perform_rsa(boundaries, num_dim, number_pts, min_dist_func = None,
       # a valid point has been selected, advance to the next index
       index_last_valid_pt += 1
 
-  return all_rsa_pts, center
+  return all_rsa_pts, RSA_center
 
+def min_dist_2D(pt, center):
+  return 0.146 * np.linalg.norm(pt - center) ** (1/3)
+
+def min_dist_3D(pt, center):
+  return 0.146 * np.linalg.norm(pt - center) ** (2/3)
 def min_dist_2D(pt, center):
   return 0.146 * np.linalg.norm(pt - center) ** (1/3)
 
@@ -139,20 +144,26 @@ def create_adjacency_matrix_from_simplices(simplices,number_pts):
 
   return adjacency_mtx
 
-def get_point_nearest_center(all_pts,tumor_center):
-  min_dist_from_center = np.inf
-  best_idx = None
-  for idx, pt in enumerate(all_pts):
-    # calculate distance between point and center
-    if np.linalg.norm(pt - tumor_center) < min_dist_from_center:
-      best_idx = idx
+def get_point_nearest_center(all_pts, RSA_center):
+    min_dist_from_center = np.inf
+    best_idx = None
 
-  return best_idx
+    for idx, pt in enumerate(all_pts):
+        # calculate distance between point and center
+        dist = np.linalg.norm(pt - RSA_center)
 
-def create_initial_states(number_pts, num_dim, tumor_center, tri):
+        if dist < min_dist_from_center:
+          #Save the min_dist and best_idx
+            min_dist_from_center = dist
+            best_idx = idx
+
+    best_pt = all_pts[best_idx]
+    return best_idx, best_pt
+
+def create_initial_states(number_pts, num_dim, RSA_center, tri):
   """
   DESCRIPTION: create the array describing the state for each initial point. the
-  ith element/point in the tri.points array is defined by the state at the ith 
+  ith index in the tri.points attribute is defined by the state at the ith
   element in the cell_states_array. see note below on states
 
   NOTE, STATES ARE DEFINED AS FOLLOWS:
@@ -161,13 +172,13 @@ def create_initial_states(number_pts, num_dim, tumor_center, tri):
   - 2: cancerous, non-proliferative, non-necrotic cellular automaton cell
   - 3: cancerous, necrotic cellular automaton cell
 
-  INPUT: 
+  INPUT:
   - number_pts (int): number of cellular automaton cells
   - num_dim (array): number of dimensions for the cells. i.e. 2d or 3d
-  - tumor_center (array): point indicating the center of the tumor
+  - RSA_center (array): point indicating the center of the RSA space
 
-  OUTPUT: 
-  - cell_states_array (ndarray): size (1 x number_pts), where the ith entry 
+  OUTPUT:
+  - cell_states_array (ndarray): size (1 x number_pts), where the ith entry
   corresponds to the ith point's state
   """
 
@@ -176,8 +187,8 @@ def create_initial_states(number_pts, num_dim, tumor_center, tri):
   all_pts = tri.points
 
   # assign the first progenitor cell
-  pt_idx_nearest_to_center = get_point_nearest_center(all_pts,tumor_center)
+  center_of_tumor_idx, center_of_tumor_pt = get_point_nearest_center(all_pts,RSA_center)
 
-  cell_states_array[pt_idx_nearest_to_center] = 1
+  cell_states_array[center_of_tumor_idx] = 1
 
-  return cell_states_array
+  return cell_states_array, center_of_tumor_idx, center_of_tumor_pt

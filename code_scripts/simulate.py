@@ -1,8 +1,19 @@
 import copy
 import numpy as np
 
-def simulate_system(num_dim,t,init_states,a,b,tri,boundary,R_max,p_0,adjacency_mtx,center_of_tumor_pt,center_of_tumor_idx):
+def simulate_system(num_dim,t,init_states,a,b,tri,R_max,p_0,adjacency_mtx,center_of_tumor_pt,center_of_tumor_idx):
   all_results = [init_states]
+
+  if num_dim != len(center_of_tumor_pt) or num_dim != len(tri.points[0]):
+    error_string = f"""
+    ERROR: Dimensions DO NOT MATCH
+    center_of_tumor_pt = {center_of_tumor_pt}
+    tri.points[0] = first_pt = {tri.points[0]}
+    BUT
+    num_dim = {num_dim}
+    """
+    raise Exception(error_string)
+
   # for our purposes, we only deal with 2D or 3D
   if num_dim == 2:
     calc_delta_p_func = calc_delta_p_2D
@@ -16,33 +27,39 @@ def simulate_system(num_dim,t,init_states,a,b,tri,boundary,R_max,p_0,adjacency_m
   # center_of_tumor_idx = np.where(init_states==1)[0][0]
   # center_of_tumor = tumor_center
   #Range over time steps
-  for _ in range(t):
+  for timestep in range(t):
     #Calculate R_t
     R_t = calc_Rt(center_of_tumor_pt,all_points,init_states,adjacency_mtx)
+    check_no_prolif_cells = (R_t == np.inf)
 
-    if R_t == np.inf:
-      print("No more proliferative cells left")
-      break
+    if check_no_prolif_cells:
+      break # exit timesteps early
+
+    # CURRENT TIMESTEP PARAMETERS:
+    #Create a copy of the current_states. This will be updated in this time step
+    new_states = copy.deepcopy(init_states)
+    #Calculate delta_n
+    delta_n = calc_delta_n_func(a,R_t)
+    #If it can spread, calculate delta_p
+    delta_p = calc_delta_p_func(b,R_t)
+    # calculate necrotic region radius
+    necrotic_radius = R_t - delta_p - delta_n
 
     #Iterate over all cells in the current time step
     for cell_idx, cell in enumerate(init_states):
-      #Create a copy of the current_states. This will be updated in this time step
-      new_states = copy.deepcopy(init_states)
+
       #Get the coordinates of the current cell
       cell_pt = all_points[cell_idx]
-      #Calculate delta_n
-      delta_n = calc_delta_n_func(a,R_t)
+      #Calculate the distance of the current cell from tumor center r_i
+      r_i = np.linalg.norm(center_of_tumor_pt - cell_pt)
+
       #If cell is non-proliferative, check if it will turn necrotic
-      if ((cell == 2) & (np.linalg.norm(cell_pt-boundary) > delta_n)):
+      if ((cell == 2) & (r_i < necrotic_radius)):
         new_states[cell_idx] = 3
         #Else if the cell is proliferative, check if it can spread
       elif cell == 1:
-        #Calculate radius of the cell r_i
-        r_i = np.linalg.norm(center_of_tumor_pt - cell_pt)
         #Check probabilistically if it is allowed to spread.
         if np.random.random() < (calc_prob_division(p_0,r_i,R_max)):
-          #If it can spread, calculate delta_p
-          delta_p = calc_delta_p_func(b,R_t)
           #Find neighbors of this cell in NEW BOARD
           neighbor_idxs = np.where(adjacency_mtx[cell_idx,:]==1)[0]
           # neighbor_states = new_states[neighbor_idxs]
@@ -61,11 +78,13 @@ def simulate_system(num_dim,t,init_states,a,b,tri,boundary,R_max,p_0,adjacency_m
                 break
           if not divide:
             new_states[cell_idx] = 2#It cannot infect any cell, make current cell non-proliferative <- Check the logic here
-      init_states = new_states
-
+    # save the updated lattice for next timestep
+    init_states = new_states
     # save the result after updating all the cells from previous timestep
     all_results.append(init_states)
 
+  if check_no_prolif_cells:
+      print(f"No more proliferative cells left, stopped at timestep={timestep}")
   return all_results
 
 def calc_delta_p_3D(b,R_t):

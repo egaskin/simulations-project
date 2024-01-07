@@ -1,2 +1,2 @@
-# simulations-project
-See the project report!
+# Modeling Brain Tumors with Cellular Automata
+We developed a brain tumor growth model using Cellular Automata, a fitting mathematical framework for understanding tumor dynamics. Our agent-based simulation divides the environment into a lattice with cells representing individual agents, mimicking the decentralized decision-making of cancer cells based on local information. By defining rules for cell interactions, our model simulates temporal tumor dynamics in a two-dimensional growth region. This approach offers valuable insights into brain cancer dynamics, guiding diagnostic protocols, surgical interventions, and screening timelines.
